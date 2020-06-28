@@ -65,6 +65,7 @@
 //!
 //! # License
 //! [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
+use std::os::raw::c_char;
 use std::{error::Error, fmt, fmt::Formatter, mem::MaybeUninit, time::Duration};
 
 use si_usb_xp::*;
@@ -121,7 +122,7 @@ pub fn product_string(
     device_ix: usize,
     product_string_type: ProductStringType,
 ) -> Result<String, SilabsUsbXpressError> {
-    let mut buffer: [i8; 256] = [0i8; 256];
+    let mut buffer: [c_char; 256] = [0; 256];
     let status = unsafe {
         SI_GetProductString(
             device_ix as i32,
@@ -281,7 +282,7 @@ impl SiHandle {
     /// C8051F380/1/2/3/4/5/6/7, C8051T320/1/2/3/6/7, C8051T620/1/2/3,
     /// CP2101/2/3/4/5/8/9
     pub fn write(&mut self, to_write: &Vec<u8>) -> Result<usize, SilabsUsbXpressError> {
-        let mut buffer: Vec<i8> = to_write.iter().map(|&c| c as i8).collect();
+        let mut buffer: Vec<c_char> = to_write.iter().map(|&c| c as c_char).collect();
         let (status, bytes_written) = unsafe {
             let mut bytes_written = MaybeUninit::uninit();
             let status = SI_Write(
@@ -344,7 +345,7 @@ impl SiHandle {
     /// C8051F380/1/2/3/4/5/6/7, C8051T320/1/2/3/6/7, C8051T620/1/2/3,
     /// CP2101/2/3/4/5/8/9
     pub fn flush_buffers(&mut self) -> Result<(), SilabsUsbXpressError> {
-        let status = unsafe { SI_FlushBuffers(self.inner, 1i8, 1i8) };
+        let status = unsafe { SI_FlushBuffers(self.inner, 1 as c_char, 1 as c_char) };
         match status as u32 {
             SI_SUCCESS => Ok(()),
             SI_INVALID_HANDLE => Err(SilabsUsbXpressError::InvalidSiHandle),
