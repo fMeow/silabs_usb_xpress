@@ -2,6 +2,11 @@
 
 # Silicon Labs USB Xpress driver
 
+[![Build Status](https://github.com/fMeow/silabs_usb_xpress/workflows/CI%20%28Linux%29/badge.svg?branch=master)](https://github.com/fMeow/silabs_usb_xpress/actions)
+[![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
+[![Crates.io](https://img.shields.io/crates/v/silabs_usb_xpress.svg)](https://crates.io/crates/silabs_usb_xpress)
+[![silabs_usb_xpress](https://docs.rs/silabs_usb_xpress/badge.svg)](https://docs.rs/silabs_usb_xpress)
+
 This library port API from [SiUSBXp](http://www.etheus.net/SiUSBXp_Linux_Driver),
 which is an open source port to SiUSBXp.dll, supplied with SiLabs USBXpress.
 The underlying USB backend is libusb, which enable the cross platform
