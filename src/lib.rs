@@ -16,14 +16,16 @@
 //!
 //! ``` toml
 //! [dependencies]
-//! silabs_usb_xpress = "0.1"
+//! silabs_usb_xpress = "0.2"
 //! ```
 //!
 //! You must have `pkg-config` and `cc` available.
 //!
 //! # Example
 //! ```rust, ignore
-//! # use silabs_usb_xpress::*;
+//! # use silabs_usb_xpress::{SiHandle, product_string, devices_count,
+//! ProductStringType, timeouts, set_timeouts};
+//! # use std::time::Duration;
 //!
 //! # fn main(){
 //! // get device count
@@ -43,25 +45,23 @@
 //! set_timeouts(Duration::from_millis(500), None).unwrap();
 //!
 //! // open handle
-//! let mut handle = open(0).unwrap();
+//! let mut handle = SiHandle::open(0).unwrap();
 //!
 //! // write to device handle
 //! let v = vec![0x55, 0x80, 0x00, 0x01, 0x01, 0xAA];
-//! write(&mut handle, &v);
+//! handle.write(&v);
 //!
 //! // read 7 bytes from device handle
-//! let read_res = read(&mut handle, 7);
+//! let read_res = handle.read(7);
 //!
 //! // close device
-//! close(handle.unwrap());
+//! handle.close();
 //! # }
 //! ```
 //!
 //! # License
 //! [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
-use std::error::Error;
-use std::fmt::Formatter;
-use std::{fmt, mem::MaybeUninit, time::Duration};
+use std::{error::Error, fmt, fmt::Formatter, mem::MaybeUninit, time::Duration};
 
 use si_usb_xp::*;
 
@@ -153,174 +153,239 @@ pub struct SiHandle {
     device_ix: usize,
 }
 
+impl SiHandle {
+    /// Opens a device and returns a handle
+    ///
+    /// Opens a device (using device number as returned by SI_GetNumDevices) and
+    /// returns a handle which will be used for subsequent accesses.
+    ///
+    /// - Supported Devices
+    ///
+    /// C8051F320/1/6/7, C8051F340/1/2/3/4/5/6/7/8/9/A/B/C/D,
+    /// C8051F380/1/2/3/4/5/6/7, C8051T320/1/2/3/6/7, C8051T620/1/2/3,
+    /// CP2101/2/3/4/5/8/9
+    pub fn open(device_ix: usize) -> Result<Self, SilabsUsbXpressError> {
+        let mut handle: MaybeUninit<*mut SiPrivate> = MaybeUninit::uninit();
+        let (status, handle) = unsafe {
+            let status = SI_Open(device_ix as i32, handle.as_mut_ptr());
+            (status, handle.assume_init())
+        };
+        match status as u32 {
+            SI_SUCCESS => Ok(SiHandle {
+                inner: handle,
+                device_ix: device_ix,
+            }),
+            SI_INVALID_HANDLE => Err(SilabsUsbXpressError::InvalidSiHandle),
+            SI_SYSTEM_ERROR_CODE => Err(SilabsUsbXpressError::SystemErrorCode),
+            SI_GLOBAL_DATA_ERROR => Err(SilabsUsbXpressError::GlobalDataError),
+            _ => unreachable!(),
+        }
+    }
+
+    /// Cancels pending IO and closes a device
+    ///
+    /// Closes an open device using the handle provided by SI_Open and sets the
+    /// handle to INVALID_HANDLE_VALUE.
+    ///
+    /// - Supported Devices
+    ///
+    /// C8051F320/1/6/7, C8051F340/1/2/3/4/5/6/7/8/9/A/B/C/D,
+    /// C8051F380/1/2/3/4/5/6/7, C8051T320/1/2/3/6/7, C8051T620/1/2/3,
+    /// CP2101/2/3/4/5/8/9
+    pub fn close(self) -> Result<(), SilabsUsbXpressError> {
+        let status = unsafe { SI_Close(self.inner) };
+        match status as u32 {
+            SI_SUCCESS => Ok(()),
+            SI_INVALID_HANDLE => Err(SilabsUsbXpressError::InvalidSiHandle),
+            SI_SYSTEM_ERROR_CODE => Err(SilabsUsbXpressError::SystemErrorCode),
+            SI_GLOBAL_DATA_ERROR => Err(SilabsUsbXpressError::GlobalDataError),
+            _ => unreachable!(),
+        }
+    }
+
+    /// Reads a block of data from a device
+    ///
+    /// Reads the available number of bytes into the supplied buffer and
+    /// retrieves the number of bytes that were read (this can be less than
+    /// the number of bytes requested). This function returns synchronously
+    /// if the overlapped object is set to NULL (this happens by default)
+    /// but will not block system execution. If an initialized OVERLAPPED
+    /// object is passed then the function returns immediately. If the read
+    /// completed then the status will be SI_SUCCESS but if I/O is still
+    /// pending then it will return STATUS_IO_PENDING. If STATUS_IO_PENDING
+    /// is returned, the OVERLAPPED object can then be waited on using
+    /// WaitForSingleObject(), and retrieve data or cancel using
+    /// GetOverlappedResult() (as documented on MSDN by Microsoft) or
+    /// SI_CancelIo() respectively. This functionality allows for multiple reads
+    /// to be issued and waited on at a time. If any data is available when
+    /// SI_Read is called it will return so check NumBytesReturned to
+    /// determine if all requested data was returned. To make sure that
+    /// SI_Read returns the requested number of bytes use SI_CheckRxQueue().
+    ///
+    /// - Supported Devices
+    ///
+    /// C8051F320/1/6/7, C8051F340/1/2/3/4/5/6/7/8/9/A/B/C/D,
+    /// C8051F380/1/2/3/4/5/6/7, C8051T320/1/2/3/6/7, C8051T620/1/2/3,
+    /// CP2101/2/3/4/5/8/9
+    pub fn read(&mut self, bytes_to_read: usize) -> Result<Vec<u8>, SilabsUsbXpressError> {
+        let mut buffer = Vec::with_capacity(bytes_to_read);
+        // let mut buffer: [i8;256] = [0;256];
+        let status = unsafe {
+            let mut bytes_returned = MaybeUninit::uninit();
+            let status = SI_Read(
+                self.inner,
+                buffer.as_mut_slice().as_mut_ptr(),
+                bytes_to_read as i32,
+                bytes_returned.as_mut_ptr(),
+                MaybeUninit::uninit().as_mut_ptr(),
+            );
+            buffer.set_len(bytes_returned.assume_init() as usize);
+            status
+        };
+        match status as u32 {
+            SI_SUCCESS => Ok(buffer.iter().map(|&c| c as u8).collect()),
+            SI_READ_ERROR => Err(SilabsUsbXpressError::ReadError),
+            SI_INVALID_HANDLE => Err(SilabsUsbXpressError::InvalidSiHandle),
+            SI_READ_TIMED_OUT => Err(SilabsUsbXpressError::ReadTimeOut),
+            SI_IO_PENDING => Err(SilabsUsbXpressError::IoPending),
+            SI_SYSTEM_ERROR_CODE => Err(SilabsUsbXpressError::SystemErrorCode),
+            SI_INVALID_REQUEST_LENGTH => Err(SilabsUsbXpressError::InvalidRequestLength),
+            SI_DEVICE_IO_FAILED => Err(SilabsUsbXpressError::DeviceIoFailed),
+            _ => unreachable!(),
+        }
+    }
+
+    /// Writes a block of data to a device
+    ///
+    /// On USB MCU devices, this function flushes both the receive buffer in the
+    /// USBXpress device driver and the transmit buffer in the device.
+    ///
+    /// **Note**: Parameter 2 and 3 of `SI_Write` have no effect and any
+    /// value can be passed when used with USB MCU devices.
+    ///
+    /// On CP210x devices, this function operates in accordance with parameters
+    /// 2 and 3. If parameter 2 (FlushTransmit) is non-zero, the CP210x
+    /// device’s UART transmit buffer is flushed. If parameter 3
+    /// (FlushReceive) is non-zero, the CP210x device’s UART receive buffer
+    /// is flushed. If parameters 2 and 3 are both non-zero, then both the
+    /// CP210x device UART transmit buffer and UART receive buffer are
+    /// flushed.
+    ///
+    /// - Supported Devices
+    ///
+    /// C8051F320/1/6/7, C8051F340/1/2/3/4/5/6/7/8/9/A/B/C/D,
+    /// C8051F380/1/2/3/4/5/6/7, C8051T320/1/2/3/6/7, C8051T620/1/2/3,
+    /// CP2101/2/3/4/5/8/9
+    pub fn write(&mut self, to_write: &Vec<u8>) -> Result<usize, SilabsUsbXpressError> {
+        let mut buffer: Vec<i8> = to_write.iter().map(|&c| c as i8).collect();
+        let (status, bytes_written) = unsafe {
+            let mut bytes_written = MaybeUninit::uninit();
+            let status = SI_Write(
+                self.inner,
+                buffer.as_mut_ptr(),
+                to_write.len() as i32,
+                bytes_written.as_mut_ptr(),
+                MaybeUninit::uninit().as_mut_ptr(),
+            );
+            (status, bytes_written.assume_init())
+        };
+        match status as u32 {
+            SI_SUCCESS => Ok(bytes_written as usize),
+            SI_WRITE_ERROR => Err(SilabsUsbXpressError::WriteError),
+            SI_INVALID_REQUEST_LENGTH => Err(SilabsUsbXpressError::InvalidRequestLength),
+            SI_INVALID_HANDLE => Err(SilabsUsbXpressError::InvalidSiHandle),
+            SI_WRITE_TIMED_OUT => Err(SilabsUsbXpressError::WriteTimeOut),
+            SI_IO_PENDING => Err(SilabsUsbXpressError::IoPending),
+            SI_SYSTEM_ERROR_CODE => Err(SilabsUsbXpressError::SystemErrorCode),
+            SI_DEVICE_IO_FAILED => Err(SilabsUsbXpressError::DeviceIoFailed),
+            _ => unreachable!(),
+        }
+    }
+
+    /// Allows sending low-level commands to the device driver
+    ///
+    /// Interface for any miscellaneous device control functions. A separate
+    /// call to SI_DeviceIOControl is required for each input or output
+    /// operation. A single call cannot be used to perform both an input and
+    /// output operation simultaneously. Refer to DeviceIOControl function
+    /// definition on MSDN Help for more details.
+    ///
+    /// - Supported Devices
+    ///
+    /// C8051F320/1/6/7, C8051F340/1/2/3/4/5/6/7/8/9/A/B/C/D,
+    /// C8051F380/1/2/3/4/5/6/7, C8051T320/1/2/3/6/7, C8051T620/1/2/3
+    pub fn device_io_control() {
+        unimplemented!()
+    }
+
+    /// Flushes the TX and RX buffers for a device
+    ///
+    /// On USB MCU devices, this function flushes both the receive buffer in the
+    /// USBXpress device driver and the transmit buffer in the device.
+    ///
+    /// **Note**: Parameter 2 and 3 of `SI_FlushBuffers` have no effect and any
+    /// value can be passed when used with USB MCU devices.
+    ///
+    /// On CP210x devices, this function operates in accordance with parameters
+    /// 2 and 3. If parameter 2 (FlushTransmit) is non-zero, the CP210x
+    /// device’s UART transmit buffer is flushed. If parameter 3
+    /// (FlushReceive) is non-zero, the CP210x device’s UART receive buffer
+    /// is flushed. If parameters 2 and 3 are both non-zero, then both the
+    /// CP210x device UART transmit buffer and UART receive buffer are
+    /// flushed.
+    ///
+    /// - Supported Devices
+    ///
+    /// C8051F320/1/6/7, C8051F340/1/2/3/4/5/6/7/8/9/A/B/C/D,
+    /// C8051F380/1/2/3/4/5/6/7, C8051T320/1/2/3/6/7, C8051T620/1/2/3,
+    /// CP2101/2/3/4/5/8/9
+    pub fn flush_buffers(&mut self) -> Result<(), SilabsUsbXpressError> {
+        let status = unsafe { SI_FlushBuffers(self.inner, 1i8, 1i8) };
+        match status as u32 {
+            SI_SUCCESS => Ok(()),
+            SI_INVALID_HANDLE => Err(SilabsUsbXpressError::InvalidSiHandle),
+            SI_SYSTEM_ERROR_CODE => Err(SilabsUsbXpressError::SystemErrorCode),
+            _ => unreachable!(),
+        }
+    }
+
+    /// Returns the number of bytes in a device's RX queue
+    ///
+    /// Returns the number of bytes in the receive queue and a status value that
+    /// indicates if an overrun (SI_QUEUE_OVERRUN) has occurred and if the RX
+    /// queue is ready (SI_QUEUE_READY) for reading. Upon indication of an
+    /// Overrun condition it is recommended that data transfer be stopped
+    /// and all buffers be flushed using the SI_FlushBuffers command.
+    pub fn check_rx_queue(&mut self) -> Result<(usize, usize), SilabsUsbXpressError> {
+        let (status, num_bytes_in_queue, queue_status) = unsafe {
+            let mut num_bytes_in_queue = MaybeUninit::uninit();
+            let mut queue_status = MaybeUninit::uninit();
+            let status = SI_CheckRXQueue(
+                self.inner,
+                num_bytes_in_queue.as_mut_ptr(),
+                queue_status.as_mut_ptr(),
+            );
+            (
+                status,
+                num_bytes_in_queue.assume_init(),
+                queue_status.assume_init(),
+            )
+        };
+        match status as u32 {
+            SI_SUCCESS => Ok((num_bytes_in_queue as usize, queue_status as usize)),
+            SI_INVALID_HANDLE => Err(SilabsUsbXpressError::InvalidSiHandle),
+            SI_DEVICE_IO_FAILED => Err(SilabsUsbXpressError::DeviceIoFailed),
+            _ => unreachable!(),
+        }
+    }
+}
+
 impl fmt::Debug for SiHandle {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("SiHandle")
             .field("device_ix", &self.device_ix)
             .finish()
     }
-}
-
-/// Opens a device and returns a handle
-///
-/// Opens a device (using device number as returned by SI_GetNumDevices) and
-/// returns a handle which will be used for subsequent accesses.
-///
-/// - Supported Devices
-///
-/// C8051F320/1/6/7, C8051F340/1/2/3/4/5/6/7/8/9/A/B/C/D,
-/// C8051F380/1/2/3/4/5/6/7, C8051T320/1/2/3/6/7, C8051T620/1/2/3,
-/// CP2101/2/3/4/5/8/9
-pub fn open(device_ix: usize) -> Result<SiHandle, SilabsUsbXpressError> {
-    let mut handle: MaybeUninit<*mut SiPrivate> = MaybeUninit::uninit();
-    let (status, handle) = unsafe {
-        let status = SI_Open(device_ix as i32, handle.as_mut_ptr());
-        (status, handle.assume_init())
-    };
-    match status as u32 {
-        SI_SUCCESS => Ok(SiHandle {
-            inner: handle,
-            device_ix: device_ix,
-        }),
-        SI_INVALID_HANDLE => Err(SilabsUsbXpressError::InvalidSiHandle),
-        SI_SYSTEM_ERROR_CODE => Err(SilabsUsbXpressError::SystemErrorCode),
-        SI_GLOBAL_DATA_ERROR => Err(SilabsUsbXpressError::GlobalDataError),
-        _ => unreachable!(),
-    }
-}
-
-/// Cancels pending IO and closes a device
-///
-/// Closes an open device using the handle provided by SI_Open and sets the
-/// handle to INVALID_HANDLE_VALUE.
-///
-/// - Supported Devices
-///
-/// C8051F320/1/6/7, C8051F340/1/2/3/4/5/6/7/8/9/A/B/C/D,
-/// C8051F380/1/2/3/4/5/6/7, C8051T320/1/2/3/6/7, C8051T620/1/2/3,
-/// CP2101/2/3/4/5/8/9
-pub fn close(handle: SiHandle) -> Result<(), SilabsUsbXpressError> {
-    let status = unsafe { SI_Close(handle.inner) };
-    match status as u32 {
-        SI_SUCCESS => Ok(()),
-        SI_INVALID_HANDLE => Err(SilabsUsbXpressError::InvalidSiHandle),
-        SI_SYSTEM_ERROR_CODE => Err(SilabsUsbXpressError::SystemErrorCode),
-        SI_GLOBAL_DATA_ERROR => Err(SilabsUsbXpressError::GlobalDataError),
-        _ => unreachable!(),
-    }
-}
-
-/// Reads a block of data from a device
-///
-/// Reads the available number of bytes into the supplied buffer and retrieves
-/// the number of bytes that were read (this can be less than the number of
-/// bytes requested). This function returns synchronously if the overlapped
-/// object is set to NULL (this happens by default) but will not block system
-/// execution. If an initialized OVERLAPPED object is passed then the function
-/// returns immediately. If the read completed then the status will be
-/// SI_SUCCESS but if I/O is still pending then it will return
-/// STATUS_IO_PENDING. If STATUS_IO_PENDING is returned, the OVERLAPPED object
-/// can then be waited on using WaitForSingleObject(), and retrieve data or
-/// cancel using GetOverlappedResult() (as documented on MSDN by Microsoft) or
-/// SI_CancelIo() respectively. This functionality allows for multiple reads to
-/// be issued and waited on at a time. If any data is available when SI_Read is
-/// called it will return so check NumBytesReturned to determine if all
-/// requested data was returned. To make sure that SI_Read returns the requested
-/// number of bytes use SI_CheckRxQueue().
-///
-/// - Supported Devices
-///
-/// C8051F320/1/6/7, C8051F340/1/2/3/4/5/6/7/8/9/A/B/C/D,
-/// C8051F380/1/2/3/4/5/6/7, C8051T320/1/2/3/6/7, C8051T620/1/2/3,
-/// CP2101/2/3/4/5/8/9
-pub fn read(handle: &mut SiHandle, bytes_to_read: usize) -> Result<Vec<u8>, SilabsUsbXpressError> {
-    let mut buffer = Vec::with_capacity(bytes_to_read);
-    // let mut buffer: [i8;256] = [0;256];
-    let status = unsafe {
-        let mut bytes_returned = MaybeUninit::uninit();
-        let status = SI_Read(
-            handle.inner,
-            buffer.as_mut_slice().as_mut_ptr(),
-            bytes_to_read as i32,
-            bytes_returned.as_mut_ptr(),
-            MaybeUninit::uninit().as_mut_ptr(),
-        );
-        buffer.set_len(bytes_returned.assume_init() as usize);
-        status
-    };
-    match status as u32 {
-        SI_SUCCESS => Ok(buffer.iter().map(|&c| c as u8).collect()),
-        SI_READ_ERROR => Err(SilabsUsbXpressError::ReadError),
-        SI_INVALID_HANDLE => Err(SilabsUsbXpressError::InvalidSiHandle),
-        SI_READ_TIMED_OUT => Err(SilabsUsbXpressError::ReadTimeOut),
-        SI_IO_PENDING => Err(SilabsUsbXpressError::IoPending),
-        SI_SYSTEM_ERROR_CODE => Err(SilabsUsbXpressError::SystemErrorCode),
-        SI_INVALID_REQUEST_LENGTH => Err(SilabsUsbXpressError::InvalidRequestLength),
-        SI_DEVICE_IO_FAILED => Err(SilabsUsbXpressError::DeviceIoFailed),
-        _ => unreachable!(),
-    }
-}
-
-/// Writes a block of data to a device
-///
-/// On USB MCU devices, this function flushes both the receive buffer in the
-/// USBXpress device driver and the transmit buffer in the device.
-///
-/// **Note**: Parameter 2 and 3 of `SI_Write` have no effect and any
-/// value can be passed when used with USB MCU devices.
-///
-/// On CP210x devices, this function operates in accordance with parameters 2
-/// and 3. If parameter 2 (FlushTransmit) is non-zero, the CP210x device’s UART
-/// transmit buffer is flushed. If parameter 3 (FlushReceive) is non-zero, the
-/// CP210x device’s UART receive buffer is flushed. If parameters 2 and 3 are
-/// both non-zero, then both the CP210x device UART transmit buffer and UART
-/// receive buffer are flushed.
-///
-/// - Supported Devices
-///
-/// C8051F320/1/6/7, C8051F340/1/2/3/4/5/6/7/8/9/A/B/C/D,
-/// C8051F380/1/2/3/4/5/6/7, C8051T320/1/2/3/6/7, C8051T620/1/2/3,
-/// CP2101/2/3/4/5/8/9
-pub fn write(handle: &mut SiHandle, to_write: &Vec<u8>) -> Result<usize, SilabsUsbXpressError> {
-    let mut buffer: Vec<i8> = to_write.iter().map(|&c| c as i8).collect();
-    let (status, bytes_written) = unsafe {
-        let mut bytes_written = MaybeUninit::uninit();
-        let status = SI_Write(
-            handle.inner,
-            buffer.as_mut_ptr(),
-            to_write.len() as i32,
-            bytes_written.as_mut_ptr(),
-            MaybeUninit::uninit().as_mut_ptr(),
-        );
-        (status, bytes_written.assume_init())
-    };
-    match status as u32 {
-        SI_SUCCESS => Ok(bytes_written as usize),
-        SI_WRITE_ERROR => Err(SilabsUsbXpressError::WriteError),
-        SI_INVALID_REQUEST_LENGTH => Err(SilabsUsbXpressError::InvalidRequestLength),
-        SI_INVALID_HANDLE => Err(SilabsUsbXpressError::InvalidSiHandle),
-        SI_WRITE_TIMED_OUT => Err(SilabsUsbXpressError::WriteTimeOut),
-        SI_IO_PENDING => Err(SilabsUsbXpressError::IoPending),
-        SI_SYSTEM_ERROR_CODE => Err(SilabsUsbXpressError::SystemErrorCode),
-        SI_DEVICE_IO_FAILED => Err(SilabsUsbXpressError::DeviceIoFailed),
-        _ => unreachable!(),
-    }
-}
-
-/// Allows sending low-level commands to the device driver
-///
-/// Interface for any miscellaneous device control functions. A separate call to
-/// SI_DeviceIOControl is required for each input or output operation. A single
-/// call cannot be used to perform both an input and output operation
-/// simultaneously. Refer to DeviceIOControl function definition on
-/// MSDN Help for more details.
-///
-/// - Supported Devices
-///
-/// C8051F320/1/6/7, C8051F340/1/2/3/4/5/6/7/8/9/A/B/C/D,
-/// C8051F380/1/2/3/4/5/6/7, C8051T320/1/2/3/6/7, C8051T620/1/2/3
-pub fn device_io_control() {
-    unimplemented!()
 }
 
 /// Sets read and write block timeouts
@@ -391,66 +456,6 @@ pub fn timeouts() -> Result<Timeout, SilabsUsbXpressError> {
             read: Duration::from_millis(read as u64),
             write: Duration::from_millis(write as u64),
         }),
-        SI_DEVICE_IO_FAILED => Err(SilabsUsbXpressError::DeviceIoFailed),
-        _ => unreachable!(),
-    }
-}
-
-/// Flushes the TX and RX buffers for a device
-///
-/// On USB MCU devices, this function flushes both the receive buffer in the
-/// USBXpress device driver and the transmit buffer in the device.
-///
-/// **Note**: Parameter 2 and 3 of `SI_FlushBuffers` have no effect and any
-/// value can be passed when used with USB MCU devices.
-///
-/// On CP210x devices, this function operates in accordance with parameters 2
-/// and 3. If parameter 2 (FlushTransmit) is non-zero, the CP210x device’s UART
-/// transmit buffer is flushed. If parameter 3 (FlushReceive) is non-zero, the
-/// CP210x device’s UART receive buffer is flushed. If parameters 2 and 3 are
-/// both non-zero, then both the CP210x device UART transmit buffer and UART
-/// receive buffer are flushed.
-///
-/// - Supported Devices
-///
-/// C8051F320/1/6/7, C8051F340/1/2/3/4/5/6/7/8/9/A/B/C/D,
-/// C8051F380/1/2/3/4/5/6/7, C8051T320/1/2/3/6/7, C8051T620/1/2/3,
-/// CP2101/2/3/4/5/8/9
-pub fn flush_buffers(handle: &mut SiHandle) -> Result<(), SilabsUsbXpressError> {
-    let status = unsafe { SI_FlushBuffers(handle.inner, 1i8, 1i8) };
-    match status as u32 {
-        SI_SUCCESS => Ok(()),
-        SI_INVALID_HANDLE => Err(SilabsUsbXpressError::InvalidSiHandle),
-        SI_SYSTEM_ERROR_CODE => Err(SilabsUsbXpressError::SystemErrorCode),
-        _ => unreachable!(),
-    }
-}
-
-/// Returns the number of bytes in a device's RX queue
-///
-/// Returns the number of bytes in the receive queue and a status value that
-/// indicates if an overrun (SI_QUEUE_OVERRUN) has occurred and if the RX queue
-/// is ready (SI_QUEUE_READY) for reading. Upon indication of an Overrun
-/// condition it is recommended that data transfer be stopped and all buffers be
-/// flushed using the SI_FlushBuffers command.
-pub fn check_rx_queue(handle: &mut SiHandle) -> Result<(usize, usize), SilabsUsbXpressError> {
-    let (status, num_bytes_in_queue, queue_status) = unsafe {
-        let mut num_bytes_in_queue = MaybeUninit::uninit();
-        let mut queue_status = MaybeUninit::uninit();
-        let status = SI_CheckRXQueue(
-            handle.inner,
-            num_bytes_in_queue.as_mut_ptr(),
-            queue_status.as_mut_ptr(),
-        );
-        (
-            status,
-            num_bytes_in_queue.assume_init(),
-            queue_status.assume_init(),
-        )
-    };
-    match status as u32 {
-        SI_SUCCESS => Ok((num_bytes_in_queue as usize, queue_status as usize)),
-        SI_INVALID_HANDLE => Err(SilabsUsbXpressError::InvalidSiHandle),
         SI_DEVICE_IO_FAILED => Err(SilabsUsbXpressError::DeviceIoFailed),
         _ => unreachable!(),
     }

@@ -29,19 +29,19 @@ fn main() {
     println!("Timeout: {:?}", t);
 
     // open handle
-    let mut handle = open(0).unwrap();
+    let mut handle = SiHandle::open(0).unwrap();
     println!("Open ok: {:?}", handle);
 
     // write to device handle
     let v = vec![0x55, 0x80, 0x00, 0x01, 0x01, 0xAA];
-    let write_res = write(&mut handle, &v);
+    let write_res = handle.write(&v);
     println!("{:?}", write_res);
 
     // read from device handle
-    let read_res = read(&mut handle, 7);
+    let read_res = handle.read(7);
     println!("{:?}", read_res);
 
     // close device
-    let if_close = close(handle);
+    let if_close = handle.close();
     println!("Close ok: {:?}", if_close);
 }

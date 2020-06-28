@@ -18,13 +18,14 @@ Add to your `Cargo.toml`:
 
 ``` toml
 [dependencies]
-silabs_usb_xpress = "0.1"
+silabs_usb_xpress = "0.2"
 ```
 
 You must have `pkg-config` and `cc` available.
 
 # Example
 ```rust, ignore
+ProductStringType, timeouts, set_timeouts};
 
 // get device count
 let num = devices_count();
@@ -43,17 +44,17 @@ let t = timeouts().unwrap();
 set_timeouts(Duration::from_millis(500), None).unwrap();
 
 // open handle
-let mut handle = open(0).unwrap();
+let mut handle = SiHandle::open(0).unwrap();
 
 // write to device handle
 let v = vec![0x55, 0x80, 0x00, 0x01, 0x01, 0xAA];
-write(&mut handle, &v);
+handle.write(&v);
 
 // read 7 bytes from device handle
-let read_res = read(&mut handle, 7);
+let read_res = handle.read(7);
 
 // close device
-close(handle.unwrap());
+handle.close();
 ```
 
 # License
