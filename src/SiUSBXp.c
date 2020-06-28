@@ -384,7 +384,6 @@ int SI_Read(struct SI_Private *Handle, char *Buffer, int BytesToRead, int *Bytes
     int i;
     DBG("SI_Read(Handle=%p, Buffer=%p, BytesToRead=%i, BytesReturned=%p)\n", Handle, Buffer, BytesToRead,
         BytesReturned);
-    DBG("%p\b", o);
     init();
 
     if (Handle == NULL)
@@ -403,8 +402,9 @@ int SI_Read(struct SI_Private *Handle, char *Buffer, int BytesToRead, int *Bytes
     *BytesReturned = SI_GetBuffer(Handle, Buffer, BytesToRead);
     DBG("  ReadBytes \"");
     for (i = 0; i < *BytesReturned; i++) {
-        if (i > 0)
-                DBG(",");
+        if (i > 0) {
+            DBG(",");
+        }
         DBG("%02X", (unsigned char) Buffer[i]);
     }
     DBG("\"\n");
@@ -417,7 +417,6 @@ int SI_Write(struct SI_Private *Handle, char *Buffer, int BytesToWrite, int *Byt
     int i;
     DBG("SI_Write(Handle=%p, Buffer=%p, BytesToWrite=%i, BytesWritten=%p)\n", Handle, Buffer, BytesToWrite,
         BytesWritten);
-    DBG("%p\b", o);
     init();
 
     if (Handle == NULL)
@@ -431,8 +430,9 @@ int SI_Write(struct SI_Private *Handle, char *Buffer, int BytesToWrite, int *Byt
 
     DBG("  Writing \"");
     for (i = 0; i < BytesToWrite; i++) {
-        if (i > 0)
-                DBG(",");
+        if (i > 0) {
+            DBG(",");
+        }
         DBG("%02X", (unsigned char) Buffer[i]);
     }
     DBG("\"\n");

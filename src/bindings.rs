@@ -160,6 +160,7 @@ extern "C" {
         buffer: *mut ::std::os::raw::c_char,
         bytes_to_read: ::std::os::raw::c_int,
         bytes_returned: *mut ::std::os::raw::c_int,
+        o: *mut std::os::raw::c_void,
     ) -> ::std::os::raw::c_int;
 }
 extern "C" {
@@ -168,6 +169,7 @@ extern "C" {
         buffer: *mut ::std::os::raw::c_char,
         bytes_to_write: ::std::os::raw::c_int,
         bytes_written: *mut ::std::os::raw::c_int,
+        o: *mut std::os::raw::c_void,
     ) -> ::std::os::raw::c_int;
 }
 extern "C" {

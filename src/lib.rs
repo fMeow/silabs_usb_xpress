@@ -18,9 +18,9 @@
 //!
 //! # License
 //! [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
-use std::{fmt, mem::MaybeUninit, time::Duration};
 use std::error::Error;
 use std::fmt::Formatter;
+use std::{fmt, mem::MaybeUninit, time::Duration};
 
 use si_usb_xp::*;
 
@@ -200,6 +200,7 @@ pub fn read(handle: &mut SiHandle, bytes_to_read: usize) -> Result<Vec<u8>, Sila
             buffer.as_mut_slice().as_mut_ptr(),
             bytes_to_read as i32,
             bytes_returned.as_mut_ptr(),
+            MaybeUninit::uninit().as_mut_ptr(),
         );
         buffer.set_len(bytes_returned.assume_init() as usize);
         status
@@ -246,6 +247,7 @@ pub fn write(handle: &mut SiHandle, to_write: &Vec<u8>) -> Result<usize, SilabsU
             buffer.as_mut_ptr(),
             to_write.len() as i32,
             bytes_written.as_mut_ptr(),
+            MaybeUninit::uninit().as_mut_ptr(),
         );
         (status, bytes_written.assume_init())
     };
