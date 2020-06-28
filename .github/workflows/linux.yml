@@ -40,6 +40,9 @@ jobs:
     steps:
       - uses: actions/checkout@v2
 
+      - name: Install libusb
+        run: sudo apt-get install libusb-dev
+
       - name: login
         env:
           SUPER_SECRET: ${{ secrets.CARGO_TOKEN }}

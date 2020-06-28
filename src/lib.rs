@@ -22,7 +22,7 @@
 //! You must have `pkg-config` and `cc` available.
 //!
 //! # Example
-//! ```rust, ignored
+//! ```rust, ignore
 //! # use silabs_usb_xpress::*;
 //!
 //! # fn main(){
