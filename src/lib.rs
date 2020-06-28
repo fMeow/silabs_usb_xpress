@@ -132,9 +132,11 @@ pub fn product_string(
                 .trim_end_matches("\0")
                 .to_owned();
             match product_string_type {
-                ProductStringType::PID | ProductStringType::VID if string.len() < 4 => {
-                    for _ in 0..4 - string.len() {
-                        string.insert(0, '0');
+                ProductStringType::PID | ProductStringType::VID => {
+                    if string.len() < 4 {
+                        for _ in 0..4 - string.len() {
+                            string.insert(0, '0');
+                        }
                     }
                     Ok(string.to_uppercase())
                 }
