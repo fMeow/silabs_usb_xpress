@@ -22,7 +22,7 @@
 //! You must have `pkg-config` and `cc` available.
 //!
 //! # Example
-//! ```rust, ignore
+//! ```rust, ignored
 //! # use silabs_usb_xpress::*;
 //!
 //! # fn main(){
@@ -197,7 +197,7 @@ pub fn open(device_ix: usize) -> Result<SiHandle, SilabsUsbXpressError> {
 /// C8051F320/1/6/7, C8051F340/1/2/3/4/5/6/7/8/9/A/B/C/D,
 /// C8051F380/1/2/3/4/5/6/7, C8051T320/1/2/3/6/7, C8051T620/1/2/3,
 /// CP2101/2/3/4/5/8/9
-pub fn close(handle: &mut SiHandle) -> Result<(), SilabsUsbXpressError> {
+pub fn close(handle: SiHandle) -> Result<(), SilabsUsbXpressError> {
     let status = unsafe { SI_Close(handle.inner) };
     match status as u32 {
         SI_SUCCESS => Ok(()),

@@ -42,6 +42,6 @@ fn main() {
     println!("{:?}", read_res);
 
     // close device
-    let if_close = close(handle.unwrap());
+    let if_close = close(handle);
     println!("Close ok: {:?}", if_close);
 }
