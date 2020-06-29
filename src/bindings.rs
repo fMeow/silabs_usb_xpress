@@ -52,6 +52,8 @@ pub struct SiPrivate {
     pub bufsize: ::std::os::raw::c_int,
     pub buffer: [::std::os::raw::c_char; 4096usize],
 }
+
+#[cfg(target_pointer_width = "64")]
 #[test]
 fn bindgen_test_layout_si_private() {
     assert_eq!(
@@ -135,6 +137,91 @@ fn bindgen_test_layout_si_private() {
         )
     );
 }
+#[cfg(target_pointer_width = "32")]
+#[test]
+fn bindgen_test_layout_si_private() {
+    assert_eq!(
+        ::std::mem::size_of::<SiPrivate>(),
+        4120usize,
+        concat!("Size of: ", stringify!(SI_Private))
+    );
+    assert_eq!(
+        ::std::mem::align_of::<SiPrivate>(),
+        4usize,
+        concat!("Alignment of ", stringify!(SI_Private))
+    );
+    assert_eq!(
+        unsafe { &(*(::std::ptr::null::<SiPrivate>())).magic as *const _ as usize },
+        0usize,
+        concat!(
+            "Offset of field: ",
+            stringify!(SI_Private),
+            "::",
+            stringify!(magic)
+        )
+    );
+    assert_eq!(
+        unsafe { &(*(::std::ptr::null::<SiPrivate>())).udev as *const _ as usize },
+        4usize,
+        concat!(
+            "Offset of field: ",
+            stringify!(SI_Private),
+            "::",
+            stringify!(udev)
+        )
+    );
+    assert_eq!(
+        unsafe { &(*(::std::ptr::null::<SiPrivate>())).interface as *const _ as usize },
+        8,
+        concat!(
+            "Offset of field: ",
+            stringify!(SI_Private),
+            "::",
+            stringify!(interface)
+        )
+    );
+    assert_eq!(
+        unsafe { &(*(::std::ptr::null::<SiPrivate>())).ep_out as *const _ as usize },
+        12usize,
+        concat!(
+            "Offset of field: ",
+            stringify!(SI_Private),
+            "::",
+            stringify!(ep_out)
+        )
+    );
+    assert_eq!(
+        unsafe { &(*(::std::ptr::null::<SiPrivate>())).ep_in as *const _ as usize },
+        16usize,
+        concat!(
+            "Offset of field: ",
+            stringify!(SI_Private),
+            "::",
+            stringify!(ep_in)
+        )
+    );
+    assert_eq!(
+        unsafe { &(*(::std::ptr::null::<SiPrivate>())).bufsize as *const _ as usize },
+        20usize,
+        concat!(
+            "Offset of field: ",
+            stringify!(SI_Private),
+            "::",
+            stringify!(bufsize)
+        )
+    );
+    assert_eq!(
+        unsafe { &(*(::std::ptr::null::<SiPrivate>())).buffer as *const _ as usize },
+        24,
+        concat!(
+            "Offset of field: ",
+            stringify!(SI_Private),
+            "::",
+            stringify!(buffer)
+        )
+    );
+}
+
 extern "C" {
     pub fn SI_GetNumDevices(num_devices: *mut ::std::os::raw::c_int) -> ::std::os::raw::c_int;
 }

@@ -1,0 +1,57 @@
+name: CI (Windows)
+
+on: [push, pull_request]
+
+jobs:
+  build_and_test:
+    strategy:
+      fail-fast: false
+      matrix:
+        version:
+          - stable
+          - nightly
+        target:
+          - x86_64-pc-windows-msvc
+          - x86_64-pc-windows-gnu
+          - i686-pc-windows-msvc
+
+    name: ${{ matrix.version }} - ${{ matrix.target }}
+    runs-on: windows-latest
+
+    steps:
+      - uses: actions/checkout@v2
+      - uses: ilammy/msvc-dev-cmd@v1
+      
+      - name: Cache vcpkg
+        id: cache-vcpkg
+        uses: actions/cache@v2
+        with:
+          path: |
+            C:/vcpkg/packages
+            C:/vcpkg/installed
+          key: ${{ runner.os }}-vcpkg-packages
+
+      - name: Install libusb-win32 with vcpkg
+        run: |
+          vcpkg install libusb-win32:x86-windows libusb-win32:x64-windows 
+          vcpkg integrate install
+
+      - name: Install ${{ matrix.version }}
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: ${{ matrix.version }}-${{ matrix.target }}
+          profile: minimal
+          override: true
+
+      - name: check build
+        uses: actions-rs/cargo@v1
+        with:
+          command: check
+          args: --all --bins --examples --tests
+
+      - name: tests
+        uses: actions-rs/cargo@v1
+        timeout-minutes: 40
+        with:
+          command: test
+          args: --all --no-fail-fast -- --nocapture
