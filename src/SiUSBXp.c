@@ -47,9 +47,15 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
-#include <unistd.h>
 #include <errno.h>
+
+#if defined(_WIN32) || defined(WIN32) 
+#include <lusb0_usb.h>
+#else
+#include <unistd.h>
 #include <usb.h>
+#endif
+
 
 /*Vendor ID / Product ID*/
 #define SI_USB_VID 0x10c4
@@ -92,12 +98,21 @@
 #define SI_MAX_READ_SIZE 4096 * 16
 #define SI_MAX_WRITE_SIZE 4096
 
-#ifdef DEBUG
-#define DBG(args...) printf(args)
+#if defined(_WIN32) || defined(WIN32) 
+    #define ERR(format, ...) fprintf (stderr, format, __VA_ARGS__)
+    #ifdef DEBUG
+        #define DBG(format, ...) fprintf (stderr, format, __VA_ARGS__)
+    #else
+        #define DBG(format, ...)
+    #endif
 #else
-#define DBG(format, ...)
+    #define ERR(args...) printf(args)
+    #ifdef DEBUG
+        #define DBG(args...) printf(args)
+    #else
+        #define DBG(format, ...)
+    #endif
 #endif
-#define ERR(args...) printf(args)
 
 #define MAGIC 12939485
 #define BUF_SIZE 4096
