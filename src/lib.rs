@@ -28,14 +28,14 @@
 //! # Example
 //! ```rust, ignore
 //! # use silabs_usb_xpress::{SiHandle, product_string, devices_count,
-//! ProductStringType, timeouts, set_timeouts};
+//! # ProductStringType, timeouts, set_timeouts};
 //! # use std::time::Duration;
 //!
 //! # fn main(){
 //! // get device count
 //! let num = devices_count();
 //!
-//! // print serial number for all devices
+//! // print serial number for selected devices
 //! let if_sn = product_string(0, ProductStringType::SerialNumber);
 //!
 //! // print VID for selected devices
