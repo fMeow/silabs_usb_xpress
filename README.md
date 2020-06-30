@@ -29,12 +29,11 @@ You must have `pkg-config` and `cc` available.
 
 # Example
 ```rust, ignore
-ProductStringType, timeouts, set_timeouts};
 
 // get device count
 let num = devices_count();
 
-// print serial number for all devices
+// print serial number for selected devices
 let if_sn = product_string(0, ProductStringType::SerialNumber);
 
 // print VID for selected devices
