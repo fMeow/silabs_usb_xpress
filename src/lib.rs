@@ -179,7 +179,6 @@ impl UsbXpress {
                 inner: handle,
                 device_ix: device_ix,
             }),
-            SI_INVALID_HANDLE => Err(SilabsUsbXpressError::InvalidSiHandle),
             SI_SYSTEM_ERROR_CODE => Err(SilabsUsbXpressError::SystemErrorCode),
             SI_GLOBAL_DATA_ERROR => Err(SilabsUsbXpressError::GlobalDataError),
             _ => unreachable!(),
@@ -200,7 +199,6 @@ impl UsbXpress {
         let status = unsafe { SI_Close(self.inner) };
         match status as u32 {
             SI_SUCCESS => Ok(()),
-            SI_INVALID_HANDLE => Err(SilabsUsbXpressError::InvalidSiHandle),
             SI_SYSTEM_ERROR_CODE => Err(SilabsUsbXpressError::SystemErrorCode),
             SI_GLOBAL_DATA_ERROR => Err(SilabsUsbXpressError::GlobalDataError),
             _ => unreachable!(),
@@ -249,7 +247,6 @@ impl UsbXpress {
         match status as u32 {
             SI_SUCCESS => Ok(buffer.iter().map(|&c| c as u8).collect()),
             SI_READ_ERROR => Err(SilabsUsbXpressError::ReadError),
-            SI_INVALID_HANDLE => Err(SilabsUsbXpressError::InvalidSiHandle),
             SI_READ_TIMED_OUT => Err(SilabsUsbXpressError::ReadTimeOut),
             SI_IO_PENDING => Err(SilabsUsbXpressError::IoPending),
             SI_SYSTEM_ERROR_CODE => Err(SilabsUsbXpressError::SystemErrorCode),
@@ -297,7 +294,6 @@ impl UsbXpress {
             SI_SUCCESS => Ok(bytes_written as usize),
             SI_WRITE_ERROR => Err(SilabsUsbXpressError::WriteError),
             SI_INVALID_REQUEST_LENGTH => Err(SilabsUsbXpressError::InvalidRequestLength),
-            SI_INVALID_HANDLE => Err(SilabsUsbXpressError::InvalidSiHandle),
             SI_WRITE_TIMED_OUT => Err(SilabsUsbXpressError::WriteTimeOut),
             SI_IO_PENDING => Err(SilabsUsbXpressError::IoPending),
             SI_SYSTEM_ERROR_CODE => Err(SilabsUsbXpressError::SystemErrorCode),
@@ -347,7 +343,6 @@ impl UsbXpress {
         let status = unsafe { SI_FlushBuffers(self.inner, 1 as c_char, 1 as c_char) };
         match status as u32 {
             SI_SUCCESS => Ok(()),
-            SI_INVALID_HANDLE => Err(SilabsUsbXpressError::InvalidSiHandle),
             SI_SYSTEM_ERROR_CODE => Err(SilabsUsbXpressError::SystemErrorCode),
             _ => unreachable!(),
         }
@@ -377,7 +372,6 @@ impl UsbXpress {
         };
         match status as u32 {
             SI_SUCCESS => Ok((num_bytes_in_queue as usize, queue_status as usize)),
-            SI_INVALID_HANDLE => Err(SilabsUsbXpressError::InvalidSiHandle),
             SI_DEVICE_IO_FAILED => Err(SilabsUsbXpressError::DeviceIoFailed),
             _ => unreachable!(),
         }
@@ -468,7 +462,6 @@ pub fn timeouts() -> Result<Timeout, SilabsUsbXpressError> {
 #[derive(Debug)]
 pub enum SilabsUsbXpressError {
     ConnectionError,
-    InvalidSiHandle,
     DeviceNotFound,
     SystemErrorCode,
     GlobalDataError,
