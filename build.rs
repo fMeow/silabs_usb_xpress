@@ -2,21 +2,26 @@
 fn main() {
     println!("cargo:rerun-if-changed=src/SiUSBXp.c");
 
-    let lib = match pkg_config::Config::new()
-        .print_system_libs(false)
-        .find("libusb")
-    {
-        Ok(lib) => lib,
+    let mut config = pkg_config::Config::new();
+    config.print_system_libs(false);
+    let mut gcc = cc::Build::new();
+
+    match config.find("libusb") {
+        Ok(lib) => lib.include_paths.iter().for_each(|include| {
+            gcc.include(include);
+        }),
         Err(e) => {
             panic!("run pkg_config fail: {:?}", e);
         }
     };
 
-    let mut gcc = cc::Build::new();
-    for include in lib.include_paths.iter() {
-        println!("cargo:include={}", include.display());
-        gcc.include(include);
-    }
+    // nowadays libusb of most OS use libusb-1.0 as backend
+    match config.find("libusb-1.0") {
+        Ok(lib) => lib.include_paths.iter().for_each(|include| {
+            gcc.include(include);
+        }),
+        Err(_e) => {}
+    };
 
     gcc.file("src/SiUSBXp.c")
         .flag("-Wno-unused-parameter")
