@@ -29,7 +29,7 @@ fn main() {
     println!("Timeout: {:?}", t);
 
     // open handle
-    let mut handle = SiHandle::open(0).unwrap();
+    let mut handle = UsbXpress::open(0).unwrap();
     println!("Open ok: {:?}", handle);
 
     // write to device handle

@@ -65,8 +65,7 @@
 //!
 //! # License
 //! [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
-use std::os::raw::c_char;
-use std::{error::Error, fmt, fmt::Formatter, mem::MaybeUninit, time::Duration};
+use std::{error::Error, fmt, fmt::Formatter, mem::MaybeUninit, os::raw::c_char, time::Duration};
 
 use si_usb_xp::*;
 
@@ -153,12 +152,12 @@ pub fn product_string(
     }
 }
 
-pub struct SiHandle {
+pub struct UsbXpress {
     inner: *mut SiPrivate,
     device_ix: usize,
 }
 
-impl SiHandle {
+impl UsbXpress {
     /// Opens a device and returns a handle
     ///
     /// Opens a device (using device number as returned by SI_GetNumDevices) and
@@ -176,7 +175,7 @@ impl SiHandle {
             (status, handle.assume_init())
         };
         match status as u32 {
-            SI_SUCCESS => Ok(SiHandle {
+            SI_SUCCESS => Ok(UsbXpress {
                 inner: handle,
                 device_ix: device_ix,
             }),
@@ -385,7 +384,7 @@ impl SiHandle {
     }
 }
 
-impl fmt::Debug for SiHandle {
+impl fmt::Debug for UsbXpress {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("SiHandle")
             .field("device_ix", &self.device_ix)
