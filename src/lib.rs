@@ -23,7 +23,11 @@
 //! silabs_usb_xpress = "0.2"
 //! ```
 //!
-//! You must have `pkg-config` and `cc` available.
+//! This crate is compatible with Unix and Windows. For unix system,
+//! `pkg-config` are required to link `libusb`. For windows, you must have [vcpkg](https://github.com/microsoft/vcpkg)
+//! installed, hook up user-wide integration and install `libusb-win32` with it.
+//!
+//! To pack a available driver in Windows, use [libusbk' inf wizard](https://osdn.net/projects/sfnet_libusb-win32/downloads/libusb-win32-releases/libusbK-inf-wizard.exe/).
 //!
 //! # Example
 //! ```rust, ignore
