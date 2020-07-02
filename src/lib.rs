@@ -31,7 +31,7 @@
 //!
 //! # Example
 //! ```rust, ignore
-//! # use silabs_usb_xpress::{SiHandle, product_string, devices_count,
+//! # use silabs_usb_xpress::{UsbXpress, product_string, devices_count,
 //! # ProductStringType, timeouts, set_timeouts};
 //! # use std::time::Duration;
 //!
@@ -53,7 +53,7 @@
 //! set_timeouts(Duration::from_millis(500), None).unwrap();
 //!
 //! // open handle
-//! let mut handle = SiHandle::open(0).unwrap();
+//! let mut handle = UsbXpress::open(0).unwrap();
 //!
 //! // write to device handle
 //! let v = vec![0x55, 0x80, 0x00, 0x01, 0x01, 0xAA];
@@ -384,7 +384,7 @@ impl UsbXpress {
 
 impl fmt::Debug for UsbXpress {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("SiHandle")
+        f.debug_struct("UsbXpress")
             .field("device_ix", &self.device_ix)
             .finish()
     }

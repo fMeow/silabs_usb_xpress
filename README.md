@@ -51,7 +51,7 @@ let t = timeouts().unwrap();
 set_timeouts(Duration::from_millis(500), None).unwrap();
 
 // open handle
-let mut handle = SiHandle::open(0).unwrap();
+let mut handle = UsbXpress::open(0).unwrap();
 
 // write to device handle
 let v = vec![0x55, 0x80, 0x00, 0x01, 0x01, 0xAA];
