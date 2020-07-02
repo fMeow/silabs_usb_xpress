@@ -25,7 +25,9 @@
 //!
 //! This crate is compatible with Unix and Windows. For unix system,
 //! `pkg-config` are required to link `libusb`. For windows, you must have [vcpkg](https://github.com/microsoft/vcpkg)
-//! installed, hook up user-wide integration and install `libusb-win32` with it.
+//! installed, hook up user-wide integration and install `libusb-win32` with it. 
+//! By default, `libusb` is linked dynamically, and set environment variable `VCPKGRS_DYNAMIC=0` 
+//! if you want to link statically.
 //!
 //! To pack a available driver in Windows, use [libusbk' inf wizard](https://osdn.net/projects/sfnet_libusb-win32/downloads/libusb-win32-releases/libusbK-inf-wizard.exe/).
 //!
