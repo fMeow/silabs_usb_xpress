@@ -25,8 +25,8 @@
 //!
 //! This crate is compatible with Unix and Windows. For unix system,
 //! `pkg-config` are required to link `libusb`. For windows, you must have [vcpkg](https://github.com/microsoft/vcpkg)
-//! installed, hook up user-wide integration and install `libusb-win32` with it. 
-//! By default, `libusb` is linked dynamically, and set environment variable `VCPKGRS_DYNAMIC=0` 
+//! installed, hook up user-wide integration and install `libusb-win32` with it.
+//! By default, `libusb` is linked dynamically, and set environment variable `VCPKGRS_DYNAMIC=0`
 //! if you want to link statically.
 //!
 //! To pack a available driver in Windows, use [libusbk' inf wizard](https://osdn.net/projects/sfnet_libusb-win32/downloads/libusb-win32-releases/libusbK-inf-wizard.exe/).
@@ -73,10 +73,10 @@
 //! [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
 use std::{error::Error, fmt, fmt::Formatter, mem::MaybeUninit, os::raw::c_char, time::Duration};
 
-use si_usb_xp::*;
+use ffi::*;
 
 #[allow(dead_code)]
-mod si_usb_xp {
+mod ffi {
     include!("bindings.rs");
 }
 
@@ -98,7 +98,10 @@ pub fn devices_count() -> Result<usize, SilabsUsbXpressError> {
     match status as u32 {
         SI_SUCCESS => Ok(num as usize),
         SI_DEVICE_NOT_FOUND => Err(SilabsUsbXpressError::DeviceNotFound),
-        _ => unreachable!(),
+        _ => unreachable!(
+            "Unreachable status code: {}. Please contact the author or submit an issue.",
+            status
+        ),
     }
 }
 
@@ -154,7 +157,10 @@ pub fn product_string(
             }
         }
         SI_DEVICE_NOT_FOUND => Err(SilabsUsbXpressError::DeviceNotFound),
-        _ => unreachable!(),
+        _ => unreachable!(
+            "Unreachable status code: {}. Please contact the author or submit an issue.",
+            status
+        ),
     }
 }
 
@@ -187,7 +193,10 @@ impl UsbXpress {
             }),
             SI_SYSTEM_ERROR_CODE => Err(SilabsUsbXpressError::SystemErrorCode),
             SI_GLOBAL_DATA_ERROR => Err(SilabsUsbXpressError::GlobalDataError),
-            _ => unreachable!(),
+            _ => unreachable!(
+                "Unreachable status code: {}. Please contact the author or submit an issue.",
+                status
+            ),
         }
     }
 
@@ -207,7 +216,10 @@ impl UsbXpress {
             SI_SUCCESS => Ok(()),
             SI_SYSTEM_ERROR_CODE => Err(SilabsUsbXpressError::SystemErrorCode),
             SI_GLOBAL_DATA_ERROR => Err(SilabsUsbXpressError::GlobalDataError),
-            _ => unreachable!(),
+            _ => unreachable!(
+                "Unreachable status code: {}. Please contact the author or submit an issue.",
+                status
+            ),
         }
     }
 
@@ -258,7 +270,10 @@ impl UsbXpress {
             SI_SYSTEM_ERROR_CODE => Err(SilabsUsbXpressError::SystemErrorCode),
             SI_INVALID_REQUEST_LENGTH => Err(SilabsUsbXpressError::InvalidRequestLength),
             SI_DEVICE_IO_FAILED => Err(SilabsUsbXpressError::DeviceIoFailed),
-            _ => unreachable!(),
+            _ => unreachable!(
+                "Unreachable status code: {}. Please contact the author or submit an issue.",
+                status
+            ),
         }
     }
 
@@ -304,11 +319,16 @@ impl UsbXpress {
             SI_IO_PENDING => Err(SilabsUsbXpressError::IoPending),
             SI_SYSTEM_ERROR_CODE => Err(SilabsUsbXpressError::SystemErrorCode),
             SI_DEVICE_IO_FAILED => Err(SilabsUsbXpressError::DeviceIoFailed),
-            _ => unreachable!(),
+            _ => unreachable!(
+                "Unreachable status code: {}. Please contact the author or submit an issue.",
+                status
+            ),
         }
     }
 
     /// Allows sending low-level commands to the device driver
+    ///
+    /// **UNIMPLEMENTED!!!**
     ///
     /// Interface for any miscellaneous device control functions. A separate
     /// call to SI_DeviceIOControl is required for each input or output
@@ -320,7 +340,7 @@ impl UsbXpress {
     ///
     /// C8051F320/1/6/7, C8051F340/1/2/3/4/5/6/7/8/9/A/B/C/D,
     /// C8051F380/1/2/3/4/5/6/7, C8051T320/1/2/3/6/7, C8051T620/1/2/3
-    pub fn device_io_control() {
+    pub fn device_io_control(&mut self) {
         unimplemented!()
     }
 
@@ -350,7 +370,10 @@ impl UsbXpress {
         match status as u32 {
             SI_SUCCESS => Ok(()),
             SI_SYSTEM_ERROR_CODE => Err(SilabsUsbXpressError::SystemErrorCode),
-            _ => unreachable!(),
+            _ => unreachable!(
+                "Unreachable status code: {}. Please contact the author or submit an issue.",
+                status
+            ),
         }
     }
 
@@ -379,7 +402,10 @@ impl UsbXpress {
         match status as u32 {
             SI_SUCCESS => Ok((num_bytes_in_queue as usize, queue_status as usize)),
             SI_DEVICE_IO_FAILED => Err(SilabsUsbXpressError::DeviceIoFailed),
-            _ => unreachable!(),
+            _ => unreachable!(
+                "Unreachable status code: {}. Please contact the author or submit an issue.",
+                status
+            ),
         }
     }
 }
@@ -417,7 +443,10 @@ pub fn set_timeouts<R: Into<Option<Duration>>, W: Into<Option<Duration>>>(
     match status as u32 {
         SI_SUCCESS => Ok(()),
         SI_DEVICE_IO_FAILED => Err(SilabsUsbXpressError::DeviceIoFailed),
-        _ => unreachable!(),
+        _ => unreachable!(
+            "Unreachable status code: {}. Please contact the author or submit an issue.",
+            status
+        ),
     }
 }
 
@@ -461,7 +490,10 @@ pub fn timeouts() -> Result<Timeout, SilabsUsbXpressError> {
             write: Duration::from_millis(write as u64),
         }),
         SI_DEVICE_IO_FAILED => Err(SilabsUsbXpressError::DeviceIoFailed),
-        _ => unreachable!(),
+        _ => unreachable!(
+            "Unreachable status code: {}. Please contact the author or submit an issue.",
+            status
+        ),
     }
 }
 
