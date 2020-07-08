@@ -20,7 +20,7 @@
 //!
 //! ``` toml
 //! [dependencies]
-//! silabs_usb_xpress = "0.2"
+//! silabs_usb_xpress = "0.3"
 //! ```
 //!
 //! This crate is compatible with Unix and Windows. For unix system,
