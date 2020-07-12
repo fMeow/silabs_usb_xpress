@@ -45,12 +45,12 @@ fn main() {
     }
     let lib = lib.unwrap();
 
-    let mut gcc = cc::Build::new();
+    let mut msvc = cc::Build::new();
     for include in lib.include_paths.iter() {
-        gcc.include(include);
+        msvc.include(include);
     }
 
-    gcc.file("src/SiUSBXp.c")
+    msvc.file("src/SiUSBXp.c")
         // ignore unused parameter
         .flag("/wd4512")
         .pic(true)
